@@ -77,9 +77,8 @@
     <h2>Gewicht am Montagmorgen</h2>
     <div id="wiegen"></div>
     <p class="hinweis">Steigt es zwei Wochen nicht, sind 3.200 kcal zu wenig. Dann 300 drauf.</p>
-    <p class="hinweis">Viermal die Woche, jede Einheit gleich, rund 35 Minuten.</p>
 
-    <h2>Die sechzehn Einheiten</h2>
+    <h2>Die zwölf Einheiten</h2>
     <div id="liste"></div>
 
     <h2>Sicherung</h2>
@@ -105,17 +104,35 @@
 <script>
 /* ------------------------------------------------------------------ Plan */
 var PLAN = {
-  T: { name: "Klimmzug, Dip, Beine, Schulter", uebungen: [
-    ["Klimmzüge, mit Zusatzgewicht sobald 10 gehen", 3, "6-10"],
-    ["Dips, mit Zusatzgewicht sobald 10 gehen", 3, "6-10"],
+  A: { name: "A, Schwerpunkt Kniebeuge", uebungen: [
+    ["Kniebeuge", 3, "5-8"],
+    ["Schrägbankdrücken Kurzhantel", 3, "6-10"],
+    ["Langhantelrudern", 3, "8-12"],
+    ["Beinbeuger", 2, "10-15"],
+    ["Seitheben", 3, "12-20"],
+    ["Trizeps über Kopf", 2, "10-15"],
+    ["Bauch", 2, "10-15"]
+  ]},
+  B: { name: "B, Schwerpunkt Kreuzheben und Klimmzug", uebungen: [
+    ["Rumänisches Kreuzheben", 3, "6-10"],
+    ["Klimmzüge", 3, "6-10"],
+    ["Flachbankdrücken Langhantel", 3, "5-8"],
     ["Beinpresse", 3, "10-15"],
-    ["Rumänisches Kreuzheben oder Beinbeuger", 3, "8-12"],
-    ["Seitheben", 3, "12-20"]
+    ["Seitheben", 3, "12-20"],
+    ["Bizeps Kurzhantel", 3, "8-12"]
+  ]},
+  C: { name: "C, Schwerpunkt Schulterdrücken", uebungen: [
+    ["Frontkniebeuge oder Beinpresse", 3, "8-12"],
+    ["Schulterdrücken Kurzhantel", 3, "6-10"],
+    ["Latzug eng", 3, "10-12"],
+    ["Dips oder Schrägbank Kurzhantel", 3, "8-12"],
+    ["Beinstrecker", 2, "12-15"],
+    ["Face Pulls", 3, "15-20"],
+    ["Wadenheben", 3, "8-15"]
   ]}
 };
-/* Viermal die Woche, vier Wochen, jede Einheit gleich. */
 var TAGE = [];
-for (var w = 1; w <= 4; w++) for (var i = 1; i <= 4; i++) TAGE.push({ woche: w, art: "T", nr: i, id: "w" + w + "e" + i });
+for (var w = 1; w <= 4; w++) for (var i = 0; i < 3; i++) TAGE.push({ woche: w, art: "ABC"[i], id: w + "ABC"[i] });
 
 /* ------------------------------------------------------------- Speicher */
 var KEY = "gymlog.daten", TKEY = "habitgrid.token", GKEY = "gymlog.gist";
@@ -170,9 +187,9 @@ function bauListe(){
     var punkt = document.createElement("span");
     punkt.className = "punkt" + ((e && e.fertig) ? " fertig" : (n > 0 ? " teil" : ""));
     var txt = document.createElement("span");
-    txt.innerHTML = "<b>Woche " + t.woche + ", Einheit " + t.nr + "</b>" +
-      "<span class='wo'>" + n + " von " + voll + " Sätzen" +
-      ((e && e.datum) ? " · " + e.datum : "") + "</span>";
+    txt.innerHTML = "<b>Woche " + t.woche + ", " + t.art + "</b>" +
+      "<span class='wo'>" + PLAN[t.art].name.split(", ")[1] +
+      " · " + n + " von " + voll + " Sätzen" + ((e && e.datum) ? " · " + e.datum : "") + "</span>";
     b.appendChild(punkt); b.appendChild(txt);
     b.onclick = function(){ oeffne(t); };
     l.appendChild(b);
@@ -204,7 +221,7 @@ function letztesMal(tag, name){
   if (!vorher) return "";
   var teile = [];
   vorher.s.forEach(function(s){ if (s && s.kg !== "" && s.wdh !== "") teile.push(s.kg + " x " + s.wdh); });
-  return teile.length ? "Zuletzt: " + teile.join(", ") : "";
+  return teile.length ? "Woche " + vorher.t.woche + ": " + teile.join(", ") : "";
 }
 function zaehleGefuelltUebung(arr){
   for (var i = 0; i < arr.length; i++) if (arr[i] && arr[i].kg !== "" && arr[i].wdh !== "") return true;
@@ -214,7 +231,7 @@ function zaehleGefuelltUebung(arr){
 function oeffne(tag){
   offen = tag;
   var e = einheit(tag.id);
-  document.getElementById("etitel").textContent = "Woche " + tag.woche + ", Einheit " + tag.nr;
+  document.getElementById("etitel").textContent = "Woche " + tag.woche + ", " + PLAN[tag.art].name;
   document.getElementById("edatum").textContent = e.datum ? ("Gemacht am " + e.datum) : "Noch nicht gemacht";
   var box = document.getElementById("uebungen"); box.innerHTML = "";
   PLAN[tag.art].uebungen.forEach(function(u){
