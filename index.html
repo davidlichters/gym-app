@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Gym Log</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gym Log">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<style>
+  :root{
+    --white:#FFFFFF; --ink:#1D1D1F; --grey:#6E6E73; --line:#D2D2D7;
+    --fill:#F5F5F7; --blue:#0071E3; --on:#30D158; --warn:#D93025;
+    --g-full:linear-gradient(96deg,#5AC8FA 0%,#5E5CE6 34%,#D63AD0 67%,#FF6B2C 100%);
+    --sf:-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+         "Helvetica Neue", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--white);color:var(--ink);font-family:var(--sf);
+       font-size:16px;line-height:1.47;letter-spacing:-.01em;
+       -webkit-font-smoothing:antialiased;
+       padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+  .wrap{max-width:520px;margin:0 auto;padding:0 16px}
+  .top{position:sticky;top:0;z-index:5;background:var(--white);
+       padding:calc(14px + env(safe-area-inset-top)) 0 8px;border-bottom:1px solid var(--line)}
+  h1{margin:0;font-size:30px;font-weight:700;line-height:1.05}
+  h1 .bunt{background:var(--g-full);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .status{font-size:13px;color:var(--grey);margin-top:2px}
+  .status.warn{color:var(--warn)}
+  h2{font-size:15px;font-weight:600;color:var(--grey);margin:22px 0 8px;
+     text-transform:uppercase;letter-spacing:.04em}
+  .karte{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+         background:var(--fill);border:0;border-radius:14px;padding:13px 14px;
+         margin-bottom:8px;font-family:inherit;font-size:16px;color:var(--ink)}
+  .karte b{font-weight:600}
+  .karte .wo{color:var(--grey);font-size:13px;display:block}
+  .punkt{width:11px;height:11px;border-radius:50%;background:var(--line);flex:0 0 auto}
+  .punkt.fertig{background:var(--on)}
+  .punkt.teil{background:#FFB020}
+  .uebung{border-top:1px solid var(--line);padding:14px 0 6px}
+  .uebung h3{margin:0;font-size:17px;font-weight:600}
+  .ziel{color:var(--grey);font-size:13px;margin:1px 0 8px}
+  .letzt{color:var(--blue);font-size:13px;margin:0 0 8px}
+  .satz{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .satz .nr{width:20px;color:var(--grey);font-size:13px;flex:0 0 auto}
+  input[type=number],input[type=text]{
+    font-family:inherit;font-size:17px;padding:9px 10px;border:1px solid var(--line);
+    border-radius:10px;background:var(--white);color:var(--ink);width:100%;min-width:0}
+  input:focus{outline:2px solid var(--blue);outline-offset:-1px}
+  .satz .feld{flex:1 1 0;display:flex;align-items:center;gap:6px}
+  .satz .eh{color:var(--grey);font-size:13px;flex:0 0 auto}
+  .knopf{font-family:inherit;font-size:16px;font-weight:600;border:0;border-radius:12px;
+         padding:12px 16px;background:var(--blue);color:#fff;width:100%;margin-top:14px}
+  .knopf.leise{background:var(--fill);color:var(--ink)}
+  .zurueck{font-family:inherit;font-size:16px;color:var(--blue);background:none;border:0;padding:8px 0}
+  .wiegen{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .wiegen label{flex:0 0 96px;color:var(--grey);font-size:14px}
+  .hinweis{font-size:13px;color:var(--grey);margin:6px 0 0}
+  .verst{display:none}
+  .an{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Gym <span class="bunt">Log</span></h1>
+    <div class="status" id="status">v1</div>
+  </div>
+
+  <!-- ---------------- Übersicht ---------------- -->
+  <div id="heim" class="an">
+    <h2>Gewicht am Montagmorgen</h2>
+    <div id="wiegen"></div>
+    <p class="hinweis">Steigt es zwei Wochen nicht, sind 3.200 kcal zu wenig. Dann 300 drauf.</p>
+
+    <h2>Die zwölf Einheiten</h2>
+    <div id="liste"></div>
+
+    <h2>Sicherung</h2>
+    <div id="tokenblock">
+      <input id="token" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="GitHub Token einfügen">
+      <button class="knopf" id="verbinden">Verbinden</button>
+      <p class="hinweis">Derselbe Token wie beim Habit Tracker, klassisch, nur der Haken bei <b>gist</b>. Er liegt nur auf diesem Gerät.</p>
+    </div>
+    <button class="knopf leise verst" id="holen">Von GitHub laden</button>
+    <button class="knopf leise verst" id="trennen">Sicherung aus</button>
+  </div>
+
+  <!-- ---------------- eine Einheit ---------------- -->
+  <div id="einheit">
+    <button class="zurueck" id="zurueck">Zurück</button>
+    <h1 id="etitel" style="font-size:24px"></h1>
+    <p class="hinweis" id="edatum"></p>
+    <div id="uebungen"></div>
+    <button class="knopf" id="fertig">Einheit abschließen</button>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ Plan */
+var PLAN = {
+  A: { name: "A, Schwerpunkt Kniebeuge", uebungen: [
+    ["Kniebeuge", 3, "5-8"],
+    ["Schrägbankdrücken Kurzhantel", 3, "6-10"],
+    ["Langhantelrudern", 3, "8-12"],
+    ["Beinbeuger", 2, "10-15"],
+    ["Seitheben", 3, "12-20"],
+    ["Trizeps über Kopf", 2, "10-15"],
+    ["Bauch", 2, "10-15"]
+  ]},
+  B: { name: "B, Schwerpunkt Kreuzheben und Klimmzug", uebungen: [
+    ["Rumänisches Kreuzheben", 3, "6-10"],
+    ["Klimmzüge", 3, "6-10"],
+    ["Flachbankdrücken Langhantel", 3, "5-8"],
+    ["Beinpresse", 3, "10-15"],
+    ["Seitheben", 3, "12-20"],
+    ["Bizeps Kurzhantel", 3, "8-12"]
+  ]},
+  C: { name: "C, Schwerpunkt Schulterdrücken", uebungen: [
+    ["Frontkniebeuge oder Beinpresse", 3, "8-12"],
+    ["Schulterdrücken Kurzhantel", 3, "6-10"],
+    ["Latzug eng", 3, "10-12"],
+    ["Dips oder Schrägbank Kurzhantel", 3, "8-12"],
+    ["Beinstrecker", 2, "12-15"],
+    ["Face Pulls", 3, "15-20"],
+    ["Wadenheben", 3, "8-15"]
+  ]}
+};
+var TAGE = [];
+for (var w = 1; w <= 4; w++) for (var i = 0; i < 3; i++) TAGE.push({ woche: w, art: "ABC"[i], id: w + "ABC"[i] });
+
+/* ------------------------------------------------------------- Speicher */
+var KEY = "gymlog.daten", TKEY = "habitgrid.token", GKEY = "gymlog.gist";
+var FASSUNG = "v1";
+var daten = { updatedAt: 0, einheiten: {}, gewicht: {} };
+function merken(k, v){ try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} }
+function gemerkt(k){ try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+function laden(){
+  try {
+    var roh = localStorage.getItem(KEY);
+    if (roh) { var p = JSON.parse(roh); if (p && p.einheiten) daten = p; }
+  } catch (e) {}
+  if (!daten.gewicht) daten.gewicht = {};
+}
+function sichern(){
+  daten.updatedAt = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(daten)); } catch (e) {}
+  planPush();
+}
+function einheit(id){
+  if (!daten.einheiten[id]) daten.einheiten[id] = { saetze: {}, datum: "", fertig: false };
+  return daten.einheiten[id];
+}
+
+/* --------------------------------------------------------------- Ansicht */
+var heim = document.getElementById("heim"), eAnsicht = document.getElementById("einheit");
+var offen = null;
+function zeige(welche){
+  heim.className = welche === "heim" ? "an" : "verst";
+  eAnsicht.className = welche === "einheit" ? "an" : "verst";
+  window.scrollTo(0, 0);
+}
+function d2(n){ return (n < 10 ? "0" : "") + n; }
+function heute(){ var d = new Date(); return d2(d.getDate()) + "." + d2(d.getMonth() + 1) + "." + d.getFullYear(); }
+
+function zaehleGefuellt(id){
+  var e = daten.einheiten[id]; if (!e) return 0;
+  var n = 0;
+  for (var k in e.saetze) for (var i = 0; i < e.saetze[k].length; i++) {
+    var s = e.saetze[k][i]; if (s && (s.kg !== "" && s.kg != null) && (s.wdh !== "" && s.wdh != null)) n++;
+  }
+  return n;
+}
+function bauListe(){
+  var l = document.getElementById("liste"); l.innerHTML = "";
+  TAGE.forEach(function(t){
+    var e = daten.einheiten[t.id], voll = 0;
+    PLAN[t.art].uebungen.forEach(function(u){ voll += u[1]; });
+    var n = zaehleGefuellt(t.id);
+    var b = document.createElement("button");
+    b.className = "karte";
+    var punkt = document.createElement("span");
+    punkt.className = "punkt" + ((e && e.fertig) ? " fertig" : (n > 0 ? " teil" : ""));
+    var txt = document.createElement("span");
+    txt.innerHTML = "<b>Woche " + t.woche + ", " + t.art + "</b>" +
+      "<span class='wo'>" + PLAN[t.art].name.split(", ")[1] +
+      " · " + n + " von " + voll + " Sätzen" + ((e && e.datum) ? " · " + e.datum : "") + "</span>";
+    b.appendChild(punkt); b.appendChild(txt);
+    b.onclick = function(){ oeffne(t); };
+    l.appendChild(b);
+  });
+}
+function bauWiegen(){
+  var w = document.getElementById("wiegen"); w.innerHTML = "";
+  for (var i = 1; i <= 4; i++) (function(i){
+    var z = document.createElement("div"); z.className = "wiegen";
+    var la = document.createElement("label"); la.textContent = "Woche " + i;
+    var inp = document.createElement("input");
+    inp.type = "number"; inp.step = "0.1"; inp.inputMode = "decimal"; inp.placeholder = "kg";
+    inp.value = daten.gewicht["w" + i] != null ? daten.gewicht["w" + i] : "";
+    inp.oninput = function(){ daten.gewicht["w" + i] = inp.value; sichern(); };
+    z.appendChild(la); z.appendChild(inp); w.appendChild(z);
+  })(i);
+}
+
+/* Die Zahlen vom letzten Mal, damit die doppelte Progression sichtbar ist. */
+function letztesMal(tag, name){
+  var vorher = null;
+  for (var i = 0; i < TAGE.length; i++) {
+    var t = TAGE[i];
+    if (t.id === tag.id) break;
+    if (t.art !== tag.art) continue;
+    var e = daten.einheiten[t.id];
+    if (e && e.saetze[name] && zaehleGefuelltUebung(e.saetze[name])) vorher = { t: t, s: e.saetze[name] };
+  }
+  if (!vorher) return "";
+  var teile = [];
+  vorher.s.forEach(function(s){ if (s && s.kg !== "" && s.wdh !== "") teile.push(s.kg + " x " + s.wdh); });
+  return teile.length ? "Woche " + vorher.t.woche + ": " + teile.join(", ") : "";
+}
+function zaehleGefuelltUebung(arr){
+  for (var i = 0; i < arr.length; i++) if (arr[i] && arr[i].kg !== "" && arr[i].wdh !== "") return true;
+  return false;
+}
+
+function oeffne(tag){
+  offen = tag;
+  var e = einheit(tag.id);
+  document.getElementById("etitel").textContent = "Woche " + tag.woche + ", " + PLAN[tag.art].name;
+  document.getElementById("edatum").textContent = e.datum ? ("Gemacht am " + e.datum) : "Noch nicht gemacht";
+  var box = document.getElementById("uebungen"); box.innerHTML = "";
+  PLAN[tag.art].uebungen.forEach(function(u){
+    var name = u[0], saetze = u[1], wdh = u[2];
+    if (!e.saetze[name]) e.saetze[name] = [];
+    while (e.saetze[name].length < saetze) e.saetze[name].push({ kg: "", wdh: "" });
+    var d = document.createElement("div"); d.className = "uebung";
+    var h = document.createElement("h3"); h.textContent = name;
+    var z = document.createElement("p"); z.className = "ziel"; z.textContent = saetze + " Sätze, " + wdh + " Wiederholungen";
+    d.appendChild(h); d.appendChild(z);
+    var lm = letztesMal(tag, name);
+    if (lm) { var p = document.createElement("p"); p.className = "letzt"; p.textContent = lm; d.appendChild(p); }
+    for (var i = 0; i < saetze; i++) (function(i){
+      var r = document.createElement("div"); r.className = "satz";
+      var nr = document.createElement("span"); nr.className = "nr"; nr.textContent = (i + 1) + ".";
+      r.appendChild(nr);
+      ["kg", "wdh"].forEach(function(feld){
+        var f = document.createElement("div"); f.className = "feld";
+        var inp = document.createElement("input");
+        inp.type = "number"; inp.inputMode = "decimal"; inp.step = feld === "kg" ? "0.5" : "1";
+        inp.placeholder = "";
+        inp.value = e.saetze[name][i][feld];
+        inp.oninput = function(){
+          e.saetze[name][i][feld] = inp.value;
+          if (!e.datum) { e.datum = heute(); document.getElementById("edatum").textContent = "Gemacht am " + e.datum; }
+          sichern();
+        };
+        var eh = document.createElement("span"); eh.className = "eh"; eh.textContent = feld === "kg" ? "kg" : "Wdh";
+        f.appendChild(inp); f.appendChild(eh); r.appendChild(f);
+      });
+      d.appendChild(r);
+    })(i);
+    box.appendChild(d);
+  });
+  document.getElementById("fertig").textContent = e.fertig ? "Abgeschlossen, nochmal öffnen" : "Einheit abschließen";
+  zeige("einheit");
+}
+
+document.getElementById("zurueck").onclick = function(){ bauListe(); zeige("heim"); };
+document.getElementById("fertig").onclick = function(){
+  var e = einheit(offen.id);
+  e.fertig = !e.fertig;
+  if (e.fertig && !e.datum) e.datum = heute();
+  sichern(); bauListe(); zeige("heim");
+};
+
+/* ------------------------------------------- Sicherung im geheimen Gist */
+var API = "https://api.github.com", FILE = "gymlog.json";
+var pushTimer = null, busy = false, again = false;
+var statusEl = document.getElementById("status");
+function uhr(){ var d = new Date(); return d2(d.getHours()) + ":" + d2(d.getMinutes()); }
+function sag(t, warn){ statusEl.textContent = t; statusEl.className = warn ? "status warn" : "status"; }
+function kopf(){
+  return { "Authorization": "Bearer " + gemerkt(TKEY), "Accept": "application/vnd.github+json",
+           "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json" };
+}
+function planPush(){ if (!gemerkt(TKEY)) return; sag("Speichere ..."); clearTimeout(pushTimer); pushTimer = setTimeout(push, 1200); }
+function push(){
+  if (!gemerkt(TKEY)) { sag(FASSUNG + ", Sicherung aus"); return Promise.resolve(); }
+  if (busy) { again = true; return Promise.resolve(); }
+  busy = true;
+  var id = gemerkt(GKEY);
+  var body = { description: "Gym Log", files: {} };
+  body.files[FILE] = { content: JSON.stringify(daten, null, 1) };
+  if (!id) body.public = false;
+  return fetch(id ? API + "/gists/" + id : API + "/gists", {
+    method: id ? "PATCH" : "POST", headers: kopf(), body: JSON.stringify(body)
+  }).then(function(r){
+    if (r.status === 401) throw new Error("Token ungültig");
+    if (r.status === 403) throw new Error("Token ohne gist-Recht");
+    if (r.status === 404 && id) { merken(GKEY, ""); throw new Error("Kopie weg, nochmal tippen"); }
+    if (!r.ok) throw new Error("GitHub " + r.status);
+    return r.json();
+  }).then(function(j){
+    if (j && j.id) merken(GKEY, j.id);
+    sag(FASSUNG + " gesichert " + uhr());
+  }).catch(function(e){ sag(e.message || "Nicht gesichert", true); })
+    .then(function(){ busy = false; if (again) { again = false; push(); } });
+}
+function pull(beimStart){
+  var id = gemerkt(GKEY);
+  if (!gemerkt(TKEY)) { sag("Sicherung aus", true); return Promise.resolve(); }
+  if (!id) return push();
+  return fetch(API + "/gists/" + id, { headers: kopf(), cache: "no-store" })
+    .then(function(r){ if (!r.ok) throw new Error("GitHub " + r.status); return r.json(); })
+    .then(function(j){
+      var f = j.files && j.files[FILE];
+      if (!f || !f.content) throw new Error("Kopie ist leer");
+      var p = JSON.parse(f.content);
+      if (!p || !p.einheiten) throw new Error("Kopie unlesbar");
+      if ((p.updatedAt || 0) > (daten.updatedAt || 0)) {
+        daten = p; if (!daten.gewicht) daten.gewicht = {};
+        try { localStorage.setItem(KEY, JSON.stringify(daten)); } catch (e) {}
+        bauListe(); bauWiegen(); sag("Von GitHub geladen " + uhr());
+      } else if (beimStart) { sag(FASSUNG + " gesichert " + uhr()); }
+      else { sag("Dieses Gerät ist neuer, nichts geladen"); }
+    }).catch(function(e){ sag(e.message || "Nicht geladen", true); });
+}
+function tokenAnsicht(){
+  var da = !!gemerkt(TKEY);
+  document.getElementById("tokenblock").className = da ? "verst" : "an";
+  document.getElementById("holen").className = da ? "knopf leise an" : "knopf leise verst";
+  document.getElementById("trennen").className = da ? "knopf leise an" : "knopf leise verst";
+}
+document.getElementById("verbinden").onclick = function(){
+  var t = document.getElementById("token").value.trim();
+  if (!t) return;
+  merken(TKEY, t); document.getElementById("token").value = "";
+  tokenAnsicht(); pull(true);
+};
+document.getElementById("holen").onclick = function(){ pull(false); };
+document.getElementById("trennen").onclick = function(){ merken(TKEY, ""); tokenAnsicht(); sag(FASSUNG + ", Sicherung aus"); };
+
+/* ------------------------------------------------------------------ Start */
+laden(); bauWiegen(); bauListe(); tokenAnsicht(); zeige("heim");
+if (gemerkt(TKEY)) pull(true); else sag(FASSUNG + ", Sicherung aus");
+</script>
+</body>
+</html>
